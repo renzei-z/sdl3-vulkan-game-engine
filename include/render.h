@@ -6,7 +6,7 @@
 #include <vulkan/vulkan_core.h>
 #include <window.h>
 
-#define VK_LAYER_KHRONOS_VALIDATION_NAME "VK_LACreate VkSwapchainKHR: The actual object.YER_KHRONOS_validation"
+#define VK_LAYER_KHRONOS_VALIDATION_NAME "VK_LAYER_KHRONOS_validation"
 
 typedef struct swapchain_support_info_t {
   VkSurfaceCapabilitiesKHR capabilities;
