@@ -1,5 +1,5 @@
-#ifndef SDL_SETUP_H_
-#define SDL_SETUP_H_
+#ifndef WINDOW_H_
+#define WINDOW_H_
 
 #include <SDL3/SDL.h>
 
@@ -17,4 +17,4 @@ void window_create(window_context *context, int width, int height);
 
 
 
-#endif // SDL_SETUP_H_
+#endif // WINDOW_H_

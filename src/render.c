@@ -1,9 +1,14 @@
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
+#include <engine.h>
 #include <render.h>
+#include <vulkan/vulkan_core.h>
 #include <window.h>
+#include <util.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -179,4 +184,149 @@ VkBool32 vk_check_queue_family_supports_surface(vulkan_context *vk, int queue_fa
     &phys_surf_supported
       );
   return phys_surf_supported;
+}
+
+VkSurfaceFormatKHR __vk_choose_swapchain_format(vulkan_context *vk) {
+  for (uint32_t i = 0; i < vk->swapchain_support.format_count; ++i) {
+    VkSurfaceFormatKHR format = vk->swapchain_support.formats[i];
+    if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&
+        format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        return format;
+  }
+
+  // TODO: Again, I don't know if returning the *first* one is correct.
+  // Maybe it is worth searching for one that at least matches color space or something,
+  // even if the format isn't perfect.
+  return vk->swapchain_support.formats[0];
+}
+
+VkPresentModeKHR __vk_choose_present_mode(vulkan_context *vk) {
+  for (uint32_t i = 0; i < vk->swapchain_support.present_mode_count; ++i) {
+    if (vk->swapchain_support.present_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+      return vk->swapchain_support.present_modes[i];
+    }
+  }
+
+  // NOTE: This is *guaranteed* by the Vulkan spec to always be
+  // available, so not even needed to search in the list of 
+  // supported present modes.
+  // See: https://docs.vulkan.org/refpages/latest/refpages/source/VkPresentModeKHR.html
+  return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D __vk_choose_swap_extent(window_context *win, VkSurfaceCapabilitiesKHR capabilities) {
+  // NOTE: 0xFFFFFFFF implies that we basically have to choose an extent
+  // rather than allow vkGetPhysicalDeviceSurfaceCapabilitiesKHR to determine it
+  // for us.
+  if (capabilities.currentExtent.width != 0xFFFFFFFF) {
+    return capabilities.currentExtent;
+  } else {
+    int w, h;
+    SDL_GetWindowSizeInPixels(win->window, &w, &h);
+
+    VkExtent2D actual_extent = {
+      (uint32_t) w,
+      (uint32_t) h
+    };
+
+    actual_extent.width = SDL_clamp(actual_extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actual_extent.height = SDL_clamp(actual_extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+    return actual_extent;
+  }
+}
+
+void __vk_get_swapchain_images(vulkan_context *vk) {
+  vkGetSwapchainImagesKHR(vk->device, vk->swapchain, &vk->swapchain_image_count, NULL);
+  vk->swapchain_images = (VkImage*)malloc(sizeof(VkImage) * vk->swapchain_image_count);
+  fail_check(vk->swapchain_images != NULL, "[ERROR] Tried to allocate on the heap, but ran out of memory.\n");
+  vkGetSwapchainImagesKHR(vk->device, vk->swapchain, &vk->swapchain_image_count, vk->swapchain_images);
+}
+
+void __vk_create_image_views(vulkan_context *vk) {
+  vk->swapchain_image_views = (VkImageView*)malloc(sizeof(VkImageView) * vk->swapchain_image_count);
+  fail_check(vk->swapchain_image_views != NULL, "[ERROR] Tried to allocate on the heap, but ran out of memory.\n");
+
+  for (uint32_t i = 0; i < vk->swapchain_image_count; ++i) {
+    VkImageViewCreateInfo create_view_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = vk->swapchain_images[i],
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = vk->chosen_format.format,
+      .components = {
+        .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+      },
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1
+      }
+    };
+
+    VkResult res = vkCreateImageView(vk->device, &create_view_info, NULL, &vk->swapchain_image_views[i]);
+    fail_check(res == VK_SUCCESS, "[ERROR] Failed to create image view.\n");
+  }
+}
+
+void vk_create_swapchain(window_context *win, vulkan_context *vk) {
+  // TODO: For every Vulkan function that returns a VkResult, we should really check if it succeeded or not.
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vk->phys_device, vk->surface, &vk->swapchain_support.capabilities);
+
+  vkGetPhysicalDeviceSurfaceFormatsKHR(vk->phys_device, vk->surface, &vk->swapchain_support.format_count, NULL);
+  vk->swapchain_support.formats = (VkSurfaceFormatKHR*)malloc(sizeof(VkSurfaceFormatKHR) * vk->swapchain_support.format_count);
+  fail_check(vk->swapchain_support.formats != NULL, "[ERROR] Tried to allocate on the heap, but ran out of memory.\n");
+  vkGetPhysicalDeviceSurfaceFormatsKHR(vk->phys_device, vk->surface, &vk->swapchain_support.format_count, vk->swapchain_support.formats);
+  
+  VkSurfaceFormatKHR chosen_format = __vk_choose_swapchain_format(vk);
+  vk->chosen_format = chosen_format;
+
+  vkGetPhysicalDeviceSurfacePresentModesKHR(vk->phys_device, vk->surface, &vk->swapchain_support.present_mode_count, NULL);
+  vk->swapchain_support.present_modes = (VkPresentModeKHR*)malloc(sizeof(VkPresentModeKHR) * vk->swapchain_support.present_mode_count);
+  fail_check(vk->swapchain_support.present_modes != NULL, "[ERROR] Tried to allocate on the heap, but ran out of memory.\n");
+  vkGetPhysicalDeviceSurfacePresentModesKHR(vk->phys_device, vk->surface, &vk->swapchain_support.present_mode_count, vk->swapchain_support.present_modes);
+
+  VkPresentModeKHR chosen_present_mode = __vk_choose_present_mode(vk);
+  VkExtent2D chosen_extent = __vk_choose_swap_extent(win, vk->swapchain_support.capabilities);
+  vk->chosen_extent = chosen_extent;
+
+  // We add 1, as we want minimum of triple-buffering.
+  uint32_t image_count = vk->swapchain_support.capabilities.minImageCount + 1;
+  if (vk->swapchain_support.capabilities.maxImageCount > 0 &&
+      image_count > vk->swapchain_support.capabilities.maxImageCount) {
+        image_count = vk->swapchain_support.capabilities.maxImageCount;
+      }
+
+  VkSwapchainCreateInfoKHR swapchain_create_info = {
+    .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+    .surface = vk->surface,
+    .minImageCount = image_count,
+    .imageFormat = chosen_format.format,
+    .imageColorSpace = chosen_format.colorSpace,
+    .imageExtent = chosen_extent,
+    .imageArrayLayers = 1,
+    .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+    .preTransform = vk->swapchain_support.capabilities.currentTransform,
+    .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+    .presentMode = chosen_present_mode,
+    .clipped = VK_TRUE,
+    .oldSwapchain = VK_NULL_HANDLE
+  };
+
+  // Setting these separately, since these only apply while
+  // we have ONE queue (family).
+  swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  VkResult res = vkCreateSwapchainKHR(vk->device, &swapchain_create_info, NULL, &vk->swapchain);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create swapchain.\n");
+
+  free_and_set_null(vk->swapchain_support.formats);
+  free_and_set_null(vk->swapchain_support.present_modes);
+
+  __vk_get_swapchain_images(vk);
+  __vk_create_image_views(vk);
 }

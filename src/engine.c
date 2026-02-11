@@ -45,7 +45,7 @@ int main(void) {
   }
 
   // TODO: Setup Swapchain
-
+  vk_create_swapchain(&state.win, &state.vk);
 
 
 
@@ -76,7 +76,16 @@ void fail_check(bool predicate, const char *msg) {
 void engine_shutdown(int exit_code) {
   if (state.vk.device != VK_NULL_HANDLE){
     vkDeviceWaitIdle(state.vk.device);
+    
+    for (uint32_t i = 0; i < state.vk.swapchain_image_count && state.vk.swapchain_image_views != NULL; ++i)
+      vkDestroyImageView(state.vk.device, state.vk.swapchain_image_views[i], NULL);
+
+    if (state.vk.swapchain != VK_NULL_HANDLE)
+      vkDestroySwapchainKHR(state.vk.device, state.vk.swapchain, NULL);
+
+    free(state.vk.swapchain_images);
     vkDestroyDevice(state.vk.device, NULL);
+    
   }
 
   if (state.vk.surface != VK_NULL_HANDLE)
