@@ -4,6 +4,7 @@
 
 #include <engine.h>
 #include <render.h>
+#include <vulkan/vulkan_core.h>
 #include <window.h>
 
 #include <stdbool.h> 
@@ -62,20 +63,32 @@ int main(void) {
 
   }
 
-  engine_shutdown();
-  return 0;
+  engine_shutdown(0);
 }
 
 void fail_check(bool predicate, const char *msg) {
   if (!predicate) {
     SDL_Log(msg, SDL_GetError());
-    engine_shutdown();
-    exit(1);
+    engine_shutdown(1);
   }
 }
 
-void engine_shutdown() {
-  exit(1);
+void engine_shutdown(int exit_code) {
+  if (state.vk.device != VK_NULL_HANDLE){
+    vkDeviceWaitIdle(state.vk.device);
+    vkDestroyDevice(state.vk.device, NULL);
+  }
+
+  if (state.vk.surface != VK_NULL_HANDLE)
+    vkDestroySurfaceKHR(state.vk.instance, state.vk.surface, NULL);
+
+  if (state.vk.instance != VK_NULL_HANDLE) 
+    vkDestroyInstance(state.vk.instance, NULL);
+
+  if (state.win.window != NULL)
+    SDL_DestroyWindow(state.win.window);
+
+  exit(exit_code);
 }
 
 

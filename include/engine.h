@@ -12,6 +12,6 @@ typedef struct app_state_t {
 } app_state;
 
 void fail_check(bool predicate, const char *msg);
-[[noreturn]] void engine_shutdown();
+[[noreturn]] void engine_shutdown(int exit_code);
 
 #endif // ENGINE_H_
