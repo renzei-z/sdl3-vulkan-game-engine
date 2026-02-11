@@ -55,6 +55,8 @@ bool vk_create_instance(vulkan_context *context) {
   if (is_khronos_validation_supported()) {
     vk_create_info.enabledLayerCount = 1;
     vk_create_info.ppEnabledLayerNames = layers;
+  } else {
+    SDL_Log("[WARNING] Khronos validation is not supported by your system. Debug information may be limited or non-existant.\n");
   }
 
   return vkCreateInstance(&vk_create_info, NULL, &context->instance) == VK_SUCCESS;
