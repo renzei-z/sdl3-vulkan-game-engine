@@ -9,6 +9,8 @@ Before building, ensure you have the following installed:
 - SDL3 Development Headers
 - GNU Make
 - C Compiler (gcc/clang)
+- DXC (DirectX Shader Compiler)
+    - Whilst this is for DirectX, it is used to compile shaders to SPIR-V to be used by the engine.
 
 ## Usage
 
