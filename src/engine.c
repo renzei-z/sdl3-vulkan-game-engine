@@ -48,6 +48,7 @@ int main(void) {
   vk_create_swapchain(&state.win, &state.vk);
   vk_create_render_pass(&state.vk);
   vk_create_frame_buffers(&state.vk);
+  vk_create_pipeline_layout(&state.vk);
 
   state.running = true;
   while (state.running) {
@@ -77,6 +78,14 @@ void engine_shutdown(int exit_code) {
   if (state.vk.device != VK_NULL_HANDLE){
     vkDeviceWaitIdle(state.vk.device);
     
+    if (state.vk.pipeline_layout != VK_NULL_HANDLE) {
+      vkDestroyPipelineLayout(state.vk.device, state.vk.pipeline_layout, NULL);
+    }
+
+    for (uint32_t i = 0; i < state.vk.swapchain_image_count && state.vk.swapchain_frame_buffers != NULL; ++i) {
+      vkDestroyFramebuffer(state.vk.device, state.vk.swapchain_frame_buffers[i], NULL);
+    }
+
     if (state.vk.render_pass != VK_NULL_HANDLE) {
       vkDestroyRenderPass(state.vk.device, state.vk.render_pass, NULL);
     }

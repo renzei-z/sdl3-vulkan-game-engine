@@ -37,6 +37,8 @@ typedef struct vulkan_context_t {
   VkExtent2D chosen_extent;
 
   VkRenderPass render_pass;
+
+  VkPipelineLayout pipeline_layout;
 } vulkan_context;
 
 bool is_khronos_validation_supported();
@@ -52,5 +54,6 @@ VkBool32 vk_check_queue_family_supports_surface(vulkan_context *vk, int queue_fa
 void vk_create_swapchain(window_context *win, vulkan_context *vk);
 void vk_create_render_pass(vulkan_context *vk);
 void vk_create_frame_buffers(vulkan_context *vk);
+void vk_create_pipeline_layout(vulkan_context *vk);
 
 #endif // RENDER_H_

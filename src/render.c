@@ -409,3 +409,18 @@ void vk_create_frame_buffers(vulkan_context *vk) {
     __vk_create_frame_buffer(vk, i);
   }
 }
+
+void vk_create_pipeline_layout(vulkan_context *vk) {
+  // TODO: This will need to change when we actually take
+  // inputs/uniforms into our shaders.
+  VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .setLayoutCount = 0,
+    .pSetLayouts = NULL,
+    .pushConstantRangeCount = 0,
+    .pPushConstantRanges = NULL
+  };
+
+  VkResult res = vkCreatePipelineLayout(vk->device, &pipeline_layout_create_info, NULL, &vk->pipeline_layout);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create pipeline layout.\n");
+}
