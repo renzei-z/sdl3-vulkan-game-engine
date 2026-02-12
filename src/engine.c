@@ -40,6 +40,7 @@ int main(void) {
   // VkQueue graphics_queue;
   // vkGetDeviceQueue(state.vk.device, graphics_family_idx, 0, &graphics_queue);
 
+  // TODO: This should probably be checked when we *create* the device, not after.
   if (!vk_check_queue_family_supports_surface(&state.vk, graphics_family_idx)) {
     SDL_Log("[WARNING] Physical device does not support surface. This may cause issues in rendering correctly.\n");
   }
@@ -47,7 +48,7 @@ int main(void) {
   // TODO: Setup Swapchain
   vk_create_swapchain(&state.win, &state.vk);
 
-
+  vk_create_render_pass(&state.vk);
 
   state.running = true;
   while (state.running) {
@@ -77,6 +78,10 @@ void engine_shutdown(int exit_code) {
   if (state.vk.device != VK_NULL_HANDLE){
     vkDeviceWaitIdle(state.vk.device);
     
+    if (state.vk.render_pass != VK_NULL_HANDLE) {
+      vkDestroyRenderPass(state.vk.device, state.vk.render_pass, NULL);
+    }
+
     for (uint32_t i = 0; i < state.vk.swapchain_image_count && state.vk.swapchain_image_views != NULL; ++i)
       vkDestroyImageView(state.vk.device, state.vk.swapchain_image_views[i], NULL);
 

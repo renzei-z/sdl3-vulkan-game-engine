@@ -330,3 +330,54 @@ void vk_create_swapchain(window_context *win, vulkan_context *vk) {
   __vk_get_swapchain_images(vk);
   __vk_create_image_views(vk);
 }
+
+void vk_create_render_pass(vulkan_context *vk) {
+  // NOTE: Attachment Descriptions/Render Passes were *superseceded* by Vulkan 1.2
+  // but we still use them for now.
+  VkAttachmentDescription color_attachment_description = {
+    .format = vk->chosen_format.format,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+    .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+    .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+  };
+
+  VkAttachmentReference color_attachment_reference = {
+    .attachment = 0,
+    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+  };
+
+  VkSubpassDescription subpass = {
+    .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+    .colorAttachmentCount = 1,
+    .pColorAttachments = &color_attachment_reference
+  };
+
+  // NOTE: Apparently this is used to stop the GPU outputting to the screen whilst
+  // it's already being outputted to? I don't fully understand this yet, so more
+  // research needed.
+  VkSubpassDependency subpass_dependency = {
+    .srcSubpass = VK_SUBPASS_EXTERNAL,
+    .dstSubpass = 0,
+    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    .srcAccessMask = 0,
+    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+  };
+
+  VkRenderPassCreateInfo render_pass_create_info = {
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+    .attachmentCount = 1,
+    .pAttachments = &color_attachment_description,
+    .subpassCount = 1,
+    .pSubpasses = &subpass,
+    .dependencyCount = 1,
+    .pDependencies = &subpass_dependency
+  };
+
+  VkResult res = vkCreateRenderPass(vk->device, &render_pass_create_info, NULL, &vk->render_pass);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create render pass.\n");
+}
