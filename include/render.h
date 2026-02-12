@@ -30,6 +30,7 @@ typedef struct vulkan_context_t {
   uint32_t swapchain_image_count;
   VkImageView *swapchain_image_views;
   VkImage *swapchain_images;
+  VkFramebuffer *swapchain_frame_buffers;
   VkSwapchainKHR swapchain;
 
   VkSurfaceFormatKHR chosen_format;
@@ -50,6 +51,6 @@ void vk_create_device(vulkan_context *vk, VkDeviceQueueCreateInfo queue_create_i
 VkBool32 vk_check_queue_family_supports_surface(vulkan_context *vk, int queue_family_idx);
 void vk_create_swapchain(window_context *win, vulkan_context *vk);
 void vk_create_render_pass(vulkan_context *vk);
-
+void vk_create_frame_buffers(vulkan_context *vk);
 
 #endif // RENDER_H_

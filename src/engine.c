@@ -45,10 +45,9 @@ int main(void) {
     SDL_Log("[WARNING] Physical device does not support surface. This may cause issues in rendering correctly.\n");
   }
 
-  // TODO: Setup Swapchain
   vk_create_swapchain(&state.win, &state.vk);
-
   vk_create_render_pass(&state.vk);
+  vk_create_frame_buffers(&state.vk);
 
   state.running = true;
   while (state.running) {

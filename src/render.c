@@ -381,3 +381,31 @@ void vk_create_render_pass(vulkan_context *vk) {
   VkResult res = vkCreateRenderPass(vk->device, &render_pass_create_info, NULL, &vk->render_pass);
   fail_check(res == VK_SUCCESS, "[ERROR] Failed to create render pass.\n");
 }
+
+void __vk_create_frame_buffer(vulkan_context *vk, uint32_t idx) {
+  VkImageView attachments[] = {
+    vk->swapchain_image_views[idx]
+  };
+
+  VkFramebufferCreateInfo frame_buffer_create_info = {
+    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+    .renderPass = vk->render_pass,
+    .attachmentCount = 1,
+    .pAttachments = attachments,
+    .width = vk->chosen_extent.width,
+    .height = vk->chosen_extent.height,
+    .layers = 1
+  };
+
+  VkResult res = vkCreateFramebuffer(vk->device, &frame_buffer_create_info, NULL, &vk->swapchain_frame_buffers[idx]);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create frame buffer.\n");
+}
+
+void vk_create_frame_buffers(vulkan_context *vk) {
+  vk->swapchain_frame_buffers = (VkFramebuffer*)malloc(sizeof(VkFramebuffer) * vk->swapchain_image_count);
+  fail_check(vk->swapchain_frame_buffers != NULL, "[ERROR] Tried to allocate on the heap, but ran out of memory.\n");
+
+  for (uint32_t i = 0; i < vk->swapchain_image_count; ++i) {
+    __vk_create_frame_buffer(vk, i);
+  }
+}
