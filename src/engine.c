@@ -92,7 +92,13 @@ void fail_check(bool predicate, const char *msg) {
 void engine_shutdown(int exit_code) {
   if (state.vk.device != VK_NULL_HANDLE){
     vkDeviceWaitIdle(state.vk.device);
+
+    if (state.vk.frag != VK_NULL_HANDLE) 
+      vkDestroyShaderModule(state.vk.device, state.vk.frag, NULL);
     
+    if (state.vk.vert != VK_NULL_HANDLE) 
+      vkDestroyShaderModule(state.vk.device, state.vk.vert, NULL);
+
     if (state.vk.pipeline_layout != VK_NULL_HANDLE) {
       vkDestroyPipelineLayout(state.vk.device, state.vk.pipeline_layout, NULL);
     }
