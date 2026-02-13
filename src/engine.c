@@ -67,6 +67,9 @@ int main(void) {
 
   vk_create_pipeline(&state.vk);
 
+  vk_create_command_pool(&state.vk, graphics_family_idx);
+  vk_allocate_command_buffer(&state.vk);
+
   state.running = true;
   while (state.running) {
     SDL_Event e = {0};
@@ -94,6 +97,9 @@ void fail_check(bool predicate, const char *msg) {
 void engine_shutdown(int exit_code) {
   if (state.vk.device != VK_NULL_HANDLE){
     vkDeviceWaitIdle(state.vk.device);
+
+    if (state.vk.command_pool != VK_NULL_HANDLE)
+      vkDestroyCommandPool(state.vk.device, state.vk.command_pool, NULL);
 
     if (state.vk.pipeline != VK_NULL_HANDLE)
       vkDestroyPipeline(state.vk.device, state.vk.pipeline, NULL);

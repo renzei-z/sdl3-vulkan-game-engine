@@ -44,6 +44,9 @@ typedef struct vulkan_context_t {
   VkShaderModule vert, frag;
 
   VkPipeline pipeline;
+
+  VkCommandPool command_pool;
+  VkCommandBuffer command_buffer;
 } vulkan_context;
 
 bool is_khronos_validation_supported();
@@ -62,5 +65,7 @@ void vk_create_frame_buffers(vulkan_context *vk);
 void vk_create_pipeline_layout(vulkan_context *vk);
 void vk_create_shader_module(vulkan_context *vk, uint32_t *code, size_t size, VkShaderModule *module);
 void vk_create_pipeline(vulkan_context *vk);
+void vk_create_command_pool(vulkan_context *vk, int queue_family_idx);
+void vk_allocate_command_buffer(vulkan_context *vk);
 
 #endif // RENDER_H_

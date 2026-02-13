@@ -542,3 +542,26 @@ void vk_create_pipeline(vulkan_context *vk) {
   VkResult res = vkCreateGraphicsPipelines(vk->device, VK_NULL_HANDLE, 1, &pipeline_create_info, NULL, &vk->pipeline);
   fail_check(res == VK_SUCCESS, "[ERROR] Failed to create graphics pipeline.\n");
 }
+
+void vk_create_command_pool(vulkan_context *vk, int queue_family_idx) {
+  VkCommandPoolCreateInfo pool_create_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+    .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+    .queueFamilyIndex = queue_family_idx
+  };
+
+  VkResult res = vkCreateCommandPool(vk->device, &pool_create_info, NULL, &vk->command_pool);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create command pool.\n");
+}
+
+void vk_allocate_command_buffer(vulkan_context *vk) {
+  VkCommandBufferAllocateInfo buffer_create_info = {
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+    .commandPool = vk->command_pool,
+    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+    .commandBufferCount = 1
+  };
+
+  VkResult res = vkAllocateCommandBuffers(vk->device, &buffer_create_info, &vk->command_buffer);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to allocate command buffer.\n");
+}
