@@ -65,6 +65,8 @@ int main(void) {
   free(vert);
   free(frag);
 
+  vk_create_pipeline(&state.vk);
+
   state.running = true;
   while (state.running) {
     SDL_Event e = {0};
@@ -92,6 +94,9 @@ void fail_check(bool predicate, const char *msg) {
 void engine_shutdown(int exit_code) {
   if (state.vk.device != VK_NULL_HANDLE){
     vkDeviceWaitIdle(state.vk.device);
+
+    if (state.vk.pipeline != VK_NULL_HANDLE)
+      vkDestroyPipeline(state.vk.device, state.vk.pipeline, NULL);
 
     if (state.vk.frag != VK_NULL_HANDLE) 
       vkDestroyShaderModule(state.vk.device, state.vk.frag, NULL);

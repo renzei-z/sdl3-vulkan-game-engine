@@ -435,3 +435,110 @@ void vk_create_shader_module(vulkan_context *vk, uint32_t *code, size_t size, Vk
   VkResult res = vkCreateShaderModule(vk->device, &shader_module_create_info, NULL, module);
   fail_check(res == VK_SUCCESS, "[ERROR] Failed to create shader module.\n");
 }
+
+void vk_create_pipeline(vulkan_context *vk) {
+  VkPipelineShaderStageCreateInfo shader_stage_vert_create_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage = VK_SHADER_STAGE_VERTEX_BIT,
+    .module = vk->vert,
+    .pName = "MainVS"
+  };
+
+  VkPipelineShaderStageCreateInfo shader_stage_frag_create_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+    .module = vk->frag,
+    .pName = "MainPS"
+  };
+
+  VkPipelineShaderStageCreateInfo shader_stages[] = {
+    shader_stage_vert_create_info,
+    shader_stage_frag_create_info
+  };
+
+  // This is basically empty right now as we have hardcoded
+  // triangle vertices in the shader.
+  VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    .vertexBindingDescriptionCount = 0,
+    .pVertexBindingDescriptions = NULL,
+    .vertexAttributeDescriptionCount = 0,
+    .pVertexAttributeDescriptions = NULL
+  };
+
+  VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    .primitiveRestartEnable = VK_FALSE
+  };
+
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = (float)vk->chosen_extent.width,
+    .height = (float)vk->chosen_extent.height,
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f
+  };
+
+  VkRect2D scissor = {
+    .offset = {0, 0},
+    .extent = vk->chosen_extent
+  };
+
+  VkPipelineViewportStateCreateInfo viewport_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    .viewportCount = 1,
+    .pViewports = &viewport,
+    .scissorCount = 1,
+    .pScissors = &scissor
+  };
+
+  VkPipelineRasterizationStateCreateInfo rasterizer_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    .depthClampEnable = VK_FALSE,
+    .rasterizerDiscardEnable = VK_FALSE,
+    .polygonMode = VK_POLYGON_MODE_FILL,
+    .lineWidth = 1.0f,
+    .cullMode = VK_CULL_MODE_BACK_BIT,
+    .frontFace = VK_FRONT_FACE_CLOCKWISE,
+    .depthBiasEnable = VK_FALSE
+  };
+
+  VkPipelineMultisampleStateCreateInfo multisampling_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    .sampleShadingEnable = VK_FALSE,
+    .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
+  };
+
+  VkPipelineColorBlendAttachmentState color_blend_attachment = {
+    .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                    | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    .blendEnable = VK_FALSE
+  };
+
+  VkPipelineColorBlendStateCreateInfo color_blending_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    .logicOpEnable = VK_FALSE,
+    .attachmentCount = 1,
+    .pAttachments = &color_blend_attachment
+  };
+
+  VkGraphicsPipelineCreateInfo pipeline_create_info = {
+    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    .stageCount = 2,
+    .pStages = shader_stages,
+    .pVertexInputState = &vertex_input_info,
+    .pInputAssemblyState = &input_assembly_info,
+    .pViewportState = &viewport_info,
+    .pRasterizationState = &rasterizer_info,
+    .pMultisampleState = &multisampling_info,
+    .pColorBlendState = &color_blending_info,
+    .layout = vk->pipeline_layout,
+    .renderPass = vk->render_pass,
+    .subpass = 0
+  };
+
+  VkResult res = vkCreateGraphicsPipelines(vk->device, VK_NULL_HANDLE, 1, &pipeline_create_info, NULL, &vk->pipeline);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create graphics pipeline.\n");
+}
