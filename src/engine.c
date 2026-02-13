@@ -6,6 +6,7 @@
 #include <render.h>
 #include <vulkan/vulkan_core.h>
 #include <window.h>
+#include <util.h>
 
 #include <stdbool.h> 
 #include <stdlib.h>
@@ -49,6 +50,20 @@ int main(void) {
   vk_create_render_pass(&state.vk);
   vk_create_frame_buffers(&state.vk);
   vk_create_pipeline_layout(&state.vk);
+
+  size_t vert_size, frag_size;
+  uint32_t *vert = load_shader_file("shaders/tri-vert.spv", &vert_size);
+  uint32_t *frag = load_shader_file("shaders/tri-frag.spv", &frag_size);
+
+  // TODO: We need to somehow get these to the shutdown code too.
+  // Maybe storing the VkShaderModules in the vulkan_context is the
+  // proper way to do this, but I'm not sue what we do when we have more
+  // than just one hlsl file.
+  vk_create_shader_module(&state.vk, vert, vert_size, &state.vk.vert);
+  vk_create_shader_module(&state.vk, frag, frag_size, &state.vk.frag);
+
+  free(vert);
+  free(frag);
 
   state.running = true;
   while (state.running) {

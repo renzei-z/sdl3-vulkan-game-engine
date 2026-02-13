@@ -424,3 +424,14 @@ void vk_create_pipeline_layout(vulkan_context *vk) {
   VkResult res = vkCreatePipelineLayout(vk->device, &pipeline_layout_create_info, NULL, &vk->pipeline_layout);
   fail_check(res == VK_SUCCESS, "[ERROR] Failed to create pipeline layout.\n");
 }
+
+void vk_create_shader_module(vulkan_context *vk, uint32_t *code, size_t size, VkShaderModule *module) {
+  VkShaderModuleCreateInfo shader_module_create_info = {
+    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    .codeSize = size,
+    .pCode = code
+  };
+
+  VkResult res = vkCreateShaderModule(vk->device, &shader_module_create_info, NULL, module);
+  fail_check(res == VK_SUCCESS, "[ERROR] Failed to create shader module.\n");
+}
