@@ -585,7 +585,7 @@ void vk_draw_frame(vk_context *ctx) {
     abort();
   }
 
-  VkCommandBuffer cmd = ctx->command_buffers[0];
+  VkCommandBuffer cmd = ctx->command_buffers[img_idx];
   //vkResetCommandBuffer(cmd, 0);
 
   VkCommandBufferBeginInfo begin_info = {
