@@ -1,19 +1,30 @@
-#include <engine.h>
+#include <SDL3/SDL_video.h>
 #include <window.h>
 
-void window_init(window_context *context) {
-    fail_check(
-        SDL_Init(SDL_INIT_VIDEO), 
-        "[ERROR] Failed to initialise SDL: %s\n");
+#include <SDL3/SDL.h>
+
+#include <util/logger.h>
+
+#ifdef __VK_BACKEND
+    #define FLAGS SDL_WINDOW_VULKAN
+#else
+    #define FLAGS 0
+#endif // __VK_BACKEND
+
+void window_init(window *w, const char *title, int width, int height) {
+    check_sdl_result(
+        SDL_Init(SDL_INIT_VIDEO),
+        "Could not initialize SDL"
+    );
+
+    w->window = SDL_CreateWindow(title, width, height, SDL_WINDOW_VULKAN);
+    check_sdl_result(
+        w->window, 
+        "Could not create SDL window"
+    );
 }
 
-void window_create(window_context *context, int width, int height) {
-  context->window = SDL_CreateWindow(
-    WINDOW_TITLE,
-    width,
-    height,
-    SDL_WINDOW_VULKAN
-  );
-  // TODO: This method of passing window to fail_check seems inelegant.
-  fail_check(context->window != NULL, "[ERROR] Failed to open a window: %s\n");
+void window_shutdown(window *w) {
+    SDL_DestroyWindow(w->window);
+    SDL_Quit();
 }

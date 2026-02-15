@@ -5,7 +5,7 @@ LIBS=-lSDL3 -lvulkan
 
 BUILD=build
 
-SRCS=$(wildcard src/*.c)
+SRCS=$(shell find src -name "*.c")
 OBJS=$(SRCS:src/%.c=$(BUILD)/%.o)
 
 # NOTE: This is temporary for just compiling triangle shaders.
@@ -31,8 +31,8 @@ game: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 $(BUILD)/%.o: src/%.c
-	@mkdir -p $(BUILD)
-	$(CC) $(INCLUDE) $(CFLAGS) -c -o $@ $^
+	@mkdir -p $(dir $@)
+	$(CC) $(INCLUDE) -D__VK_BACKEND $(CFLAGS) -c -o $@ $^
 
 clean:
 	rm -f $(SHADERS)

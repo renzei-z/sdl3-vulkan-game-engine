@@ -1,17 +1,23 @@
 #ifndef ENGINE_H_
 #define ENGINE_H_
 
-#include <window.h>
-#include <render.h>
+// #ifndef __VK_BACKEND
+// #error No appropriate backend defined. Make sure to define __VK_BACKEND before including engine.h
+// #endif // __VK_BACKEND
 
-typedef struct app_state_t {
-  bool running;
-  bool has_shutdown;
-  window_context win;
-  vulkan_context vk;
-} app_state;
+#ifdef __VK_BACKEND
+    #include <vk/context.h>
+#endif // __VK_BACKEND
 
-void fail_check(bool predicate, const char *msg);
-[[noreturn]] void engine_shutdown(int exit_code);
+typedef struct engine_state_t {
+#ifdef __VK_BACKEND
+    vk_context vk;
+#endif // __VK_BACKEND
+    bool running;
+} engine_state;
+
+void engine_init(engine_state *e, const char *title, int width, int height);
+
+[[noreturn]] void engine_quit(engine_state *e);
 
 #endif // ENGINE_H_
