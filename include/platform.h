@@ -13,6 +13,6 @@ typedef struct engine_event_t {
     engine_event_type type;
 } engine_event;
 
-bool platform_pool_events(engine_event *out);
+bool platform_poll_events(engine_event *out);
 
 #endif // PLATFORM_H_
