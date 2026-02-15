@@ -5,7 +5,7 @@
 #include <engine.h>
 #include <platform.h>
 
-#include <stdio.h>
+#include <SDL3/SDL_log.h>
 
 int main(void) {
     engine_state engine = {0};
@@ -16,7 +16,7 @@ int main(void) {
         while (engine.running && platform_pool_events(&e)) {
             switch (e.type) {
                 case ENGINE_EVENT_QUIT:
-                    printf("WHAT!!\n");
+                    SDL_Log("[EVENT] Quit.\n");
                     engine.running = false;
                     break;
                 case ENGINE_EVENT_RESIZE:
