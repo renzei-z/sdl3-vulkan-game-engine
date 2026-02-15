@@ -13,7 +13,7 @@ int main(void) {
 
     while (engine.running) {
         engine_event e;
-        while (engine.running && platform_pool_events(&e)) {
+        while (engine.running && platform_poll_events(&e)) {
             switch (e.type) {
                 case ENGINE_EVENT_QUIT:
                     SDL_Log("[EVENT] Quit.\n");

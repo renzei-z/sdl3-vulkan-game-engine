@@ -1,7 +1,7 @@
 #include <SDL3/SDL.h>
 #include <platform.h>
 
-bool platform_pool_events(engine_event *out) {
+bool platform_poll_events(engine_event *out) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         switch (e.type) {
@@ -13,7 +13,7 @@ bool platform_pool_events(engine_event *out) {
                 return true;
             default:
                 out->type = ENGINE_EVENT_NONE;
-                return true; 
+                break;
         }
     }
     return false;
