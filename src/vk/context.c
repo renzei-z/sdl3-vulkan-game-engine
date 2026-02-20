@@ -522,13 +522,14 @@ void __vk_create_command_pool(vk_context *ctx, VkCommandPool *target, uint32_t q
 }
 
 void __vk_create_graphics_command_buffers(vk_context *ctx) {
-  ctx->command_buffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * ctx->image_count);
+  ctx->command_buffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * MAX_FRAMES_IN_FLIGHT);
+  check_mem_alloc(ctx->command_buffers);
 
   VkCommandBufferAllocateInfo buffer_allocate_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
     .commandPool = ctx->graphics_pool,
     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-    .commandBufferCount = ctx->image_count
+    .commandBufferCount = MAX_FRAMES_IN_FLIGHT
   }; 
 
   check_vk_result(
@@ -540,6 +541,15 @@ void __vk_create_graphics_command_buffers(vk_context *ctx) {
 }
 
 void __vk_create_sync_objects(vk_context *ctx) {
+  ctx->image_available_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+  check_mem_alloc(ctx->image_available_semaphores);
+  
+ctx->render_finished_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+  check_mem_alloc(ctx->render_finished_semaphores);
+
+  ctx->in_flight_fences = (VkFence*)malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
+  check_mem_alloc(ctx->in_flight_fences);
+  
   VkSemaphoreCreateInfo semaphore_create_info = {
     .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
   };
@@ -549,33 +559,33 @@ void __vk_create_sync_objects(vk_context *ctx) {
     .flags = VK_FENCE_CREATE_SIGNALED_BIT
   };
 
-  check_vk_result(
-    vkCreateSemaphore(ctx->device, &semaphore_create_info, NULL, &ctx->image_available_semaphore),
-    "Failed to create image_available semaphore"
-  );
-  check_vk_result(
-    vkCreateSemaphore(ctx->device, &semaphore_create_info, NULL, &ctx->render_finished_semaphore),
-    "Failed to create render_finished semaphore"
-  );
-  check_vk_result(
-    vkCreateFence(ctx->device, &fence_create_info, NULL, &ctx->in_flight_fence),
-    "Failed to create in_flight fence"
-  );
+  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    check_vk_result(
+		    vkCreateSemaphore(ctx->device, &semaphore_create_info, NULL, &ctx->image_available_semaphores[i]),
+		    "Failed to create image_available semaphore"
+		    );
+    check_vk_result(
+		    vkCreateSemaphore(ctx->device, &semaphore_create_info, NULL, &ctx->render_finished_semaphores[i]),
+		    "Failed to create render_finished semaphore"
+		    );
+    check_vk_result(
+		    vkCreateFence(ctx->device, &fence_create_info, NULL, &ctx->in_flight_fences[i]),
+		    "Failed to create in_flight fence"
+		    );
+  }
 
   SDL_Log("[INFO] Created synchonization objects.\n");
 }
 
 void vk_draw_frame(vk_context *ctx) {
-  vkWaitForFences(ctx->device, 1, &ctx->in_flight_fence, VK_TRUE, UINT64_MAX);
-
-  vkResetFences(ctx->device, 1, &ctx->in_flight_fence);
+  vkWaitForFences(ctx->device, 1, &ctx->in_flight_fences[ctx->current_frame], VK_TRUE, UINT64_MAX);
 
   uint32_t img_idx;
   VkResult res = vkAcquireNextImageKHR(
     ctx->device,
     ctx->swapchain,
     UINT64_MAX,
-    ctx->image_available_semaphore,
+    ctx->image_available_semaphores[ctx->current_frame],
     VK_NULL_HANDLE,
     &img_idx
   );
@@ -585,8 +595,10 @@ void vk_draw_frame(vk_context *ctx) {
     abort();
   }
 
-  VkCommandBuffer cmd = ctx->command_buffers[img_idx];
-  //vkResetCommandBuffer(cmd, 0);
+  vkResetFences(ctx->device, 1, &ctx->in_flight_fences[ctx->current_frame]);
+  
+  VkCommandBuffer cmd = ctx->command_buffers[ctx->current_frame];
+  vkResetCommandBuffer(cmd, 0);
 
   VkCommandBufferBeginInfo begin_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
@@ -616,41 +628,52 @@ void vk_draw_frame(vk_context *ctx) {
   VkSubmitInfo submit_info = {
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = &ctx->image_available_semaphore,
+    .pWaitSemaphores = &ctx->image_available_semaphores[ctx->current_frame],
     .pWaitDstStageMask = wait_stages,
     .commandBufferCount = 1,
     .pCommandBuffers = &cmd,
     .signalSemaphoreCount = 1,
-    .pSignalSemaphores = &ctx->render_finished_semaphore
+    .pSignalSemaphores = &ctx->render_finished_semaphores[ctx->current_frame]
   };
 
-  vkQueueSubmit(ctx->graphics_queue, 1, &submit_info, ctx->in_flight_fence);
+  vkQueueSubmit(ctx->graphics_queue, 1, &submit_info, ctx->in_flight_fences[ctx->current_frame]);
 
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = &ctx->render_finished_semaphore, // Wait for rendering to finish
+    .pWaitSemaphores = &ctx->render_finished_semaphores[ctx->current_frame], // Wait for rendering to finish
     .swapchainCount = 1,
     .pSwapchains = &ctx->swapchain,
     .pImageIndices = &img_idx
   };
 
   vkQueuePresentKHR(ctx->graphics_queue, &present_info);
+
+  ctx->current_frame = (ctx->current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void vk_context_shutdown(vk_context *ctx) {
   if (ctx->device != VK_NULL_HANDLE)
     vkDeviceWaitIdle(ctx->device);
 
-  if (ctx->in_flight_fence != VK_NULL_HANDLE)
-    vkDestroyFence(ctx->device, ctx->in_flight_fence, NULL);
-
-  if (ctx->image_available_semaphore != VK_NULL_HANDLE)
-    vkDestroySemaphore(ctx->device, ctx->image_available_semaphore, NULL);
+  if (ctx->in_flight_fences != NULL) {
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+      vkDestroyFence(ctx->device, ctx->in_flight_fences[i], NULL);
+    }
+  }
   
-  if (ctx->render_finished_semaphore != VK_NULL_HANDLE)
-    vkDestroySemaphore(ctx->device, ctx->render_finished_semaphore, NULL);
-
+  if (ctx->image_available_semaphores != NULL) {
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+      vkDestroySemaphore(ctx->device, ctx->image_available_semaphores[i], NULL);
+    }
+  }
+  
+  if (ctx->render_finished_semaphores != NULL) {
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+      vkDestroySemaphore(ctx->device, ctx->render_finished_semaphores[i], NULL);
+    }
+  }
+      
   if (ctx->graphics_pool != VK_NULL_HANDLE)
     vkDestroyCommandPool(ctx->device, ctx->graphics_pool, NULL);
   
