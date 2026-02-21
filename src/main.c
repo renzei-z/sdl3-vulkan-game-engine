@@ -9,8 +9,8 @@
 
 int main(void) {
     engine_state engine = {0};
-    engine_init(&engine, "[GAME] Game Engine", 800, 400);
-
+    engine_init(&engine, "[GAME] Game Engine", 800, 400);    
+    
     while (engine.running) {
         engine_event e;
         while (engine.running && platform_poll_events(&e)) {

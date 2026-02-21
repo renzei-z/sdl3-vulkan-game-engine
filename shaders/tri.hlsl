@@ -23,7 +23,7 @@ VSOutput MainVS(uint VertexIndex : SV_VertexID) {
     return output;
 }
 
-// Fragment/Pixel Shader
-float4 MainPS(VSOutput input) : SV_TARGET {
+// Fragment Shader
+float4 MainFS(VSOutput input) : SV_TARGET {
     return float4(input.Color, 1.0);
 }

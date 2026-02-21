@@ -11,6 +11,13 @@ void engine_init(engine_state *e, const char *title, int width, int height) {
         width,
         height);
     e->running = true;
+
+    vk_pipeline_config cfg = vk_default_pipeline_config();
+
+    cfg.layout = e->vk.pipeline_layout;
+    cfg.render_pass = e->vk.render_pass;
+    
+    vk_pipeline_build(&e->vk, "shaders/tri-vert.spv", "shaders/tri-frag.spv", &cfg);
 }
 
 [[noreturn]] void engine_quit(engine_state *e) {

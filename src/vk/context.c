@@ -7,14 +7,18 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
+#include <util/file_io.h>
 #include <util/logger.h>
-#include <vulkan/vulkan_core.h>
+
+#define UNUSED(x) ((void)x)
+#define TODO(msg) { SDL_Log("[TODO] %s\n", msg); exit(1); } 
 
 void __vk_create_instance(vk_context *ctx);
 void __vk_create_surface(vk_context *ctx);
 void __vk_pick_physical_device(vk_context *ctx);
 void __vk_create_logical_device(vk_context *ctx);
 void __vk_get_device_queue(vk_context *ctx);
+void __vk_create_pipeline_layout(vk_context *ctx);
 void __vk_create_swapchain(vk_context *ctx);
 void __vk_create_image_views(vk_context *ctx);
 void __vk_create_render_pass(vk_context *ctx);
@@ -34,6 +38,8 @@ void vk_context_init(vk_context *ctx, const char *title, int width,
   __vk_create_logical_device(ctx);
   __vk_get_device_queue(ctx);
 
+  __vk_create_pipeline_layout(ctx);
+  
   __vk_create_swapchain(ctx);
   __vk_create_image_views(ctx);
 
@@ -194,7 +200,7 @@ void __vk_find_queue_families(vk_context *ctx) {
     vkGetPhysicalDeviceSurfaceSupportKHR(ctx->physical_device, i, ctx->surface, &present_support);
 
     if ((props.queueFlags & VK_QUEUE_GRAPHICS_BIT) && present_support) {
-      if (ctx->graphics_family_idx == -1)
+      if (ctx->graphics_family_idx == (uint32_t)-1)
         ctx->graphics_family_idx = i;
     }
 
@@ -213,8 +219,8 @@ void __vk_find_queue_families(vk_context *ctx) {
     }
   }
 
-  if (ctx->compute_family_idx == -1) ctx->compute_family_idx = ctx->graphics_family_idx;
-  if (ctx->transfer_family_idx == -1) ctx->transfer_family_idx = ctx->graphics_family_idx;
+  if (ctx->compute_family_idx == (uint32_t)-1) ctx->compute_family_idx = ctx->graphics_family_idx;
+  if (ctx->transfer_family_idx == (uint32_t)-1) ctx->transfer_family_idx = ctx->graphics_family_idx;
   
   free(ctx->queue_family_properties);
   SDL_Log("[INFO] Chosen queue families:\n");
@@ -287,6 +293,20 @@ void __vk_get_device_queue(vk_context *ctx) {
     0,
     &ctx->graphics_queue
   );
+}
+
+void __vk_create_pipeline_layout(vk_context *ctx) {
+  VkPipelineLayoutCreateInfo layout_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .setLayoutCount = 0,
+    .pSetLayouts = NULL,
+    .pushConstantRangeCount = 0,
+    .pPushConstantRanges = NULL
+  };
+
+  check_vk_result(vkCreatePipelineLayout(ctx->device, &layout_info, NULL, &ctx->pipeline_layout), "Failed to create pipeline layout");
+  
+  SDL_Log("[INFO] Created empty pipeline layout.\n");
 }
 
 VkSurfaceFormatKHR __vk_choose_swap_surface_format(VkSurfaceFormatKHR *formats, uint32_t format_count) {
@@ -575,6 +595,147 @@ ctx->render_finished_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX
   }
 
   SDL_Log("[INFO] Created synchonization objects.\n");
+}
+
+VkShaderModule __vk_create_shader_module(vk_context *ctx, const uint32_t *code, size_t size) {
+  VkShaderModuleCreateInfo module_create_info = {
+    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+    .codeSize = size,
+    .pCode = code
+  };
+
+  // TODO: Currently, we have no way to free this shader module.
+  VkShaderModule module;
+  check_vk_result(vkCreateShaderModule(ctx->device, &module_create_info, NULL, &module), "Could not create shader module");
+
+  return module;
+}
+
+VkShaderModule __vk_load_shader(vk_context *ctx, const char *path) {
+  size_t size;
+  uint8_t *file_contents = read_entire_file(path, &size);
+
+  if (file_contents == NULL) {
+    SDL_Log("[ERROR] Tried to open shader file '%s', but failed.\n", path);
+    exit(1);
+  }
+
+  VkShaderModule module = __vk_create_shader_module(ctx, (const uint32_t*)file_contents, size);
+
+  free(file_contents);
+  SDL_Log("[INFO] Loaded shader '%s' successfully.\n", path);
+
+  return module;
+}
+
+vk_pipeline_config vk_default_pipeline_config() {
+  vk_pipeline_config cfg = {0};
+
+  cfg.input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  cfg.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  cfg.input_assembly.primitiveRestartEnable = VK_FALSE;
+
+  cfg.rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  cfg.rasterizer.depthClampEnable = VK_FALSE;
+  cfg.rasterizer.rasterizerDiscardEnable = VK_FALSE;
+  cfg.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+  cfg.rasterizer.lineWidth = 1.0f;
+  cfg.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+  cfg.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+  cfg.rasterizer.depthBiasEnable = VK_FALSE;
+
+  cfg.multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+  cfg.multisampling.sampleShadingEnable = VK_FALSE;
+  cfg.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+  cfg.color_blend_attachment.colorWriteMask =
+    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | 
+    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  cfg.color_blend_attachment.blendEnable = VK_FALSE;
+
+  cfg.layout = VK_FALSE;
+  cfg.render_pass = VK_FALSE;
+  
+  return cfg;
+}
+
+VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *fs_path, vk_pipeline_config *config) {
+  if (config == NULL) {
+    SDL_Log("[ERROR] Null pointer was passed to vk_pipeline_build. This will segfault.\n");
+    exit(1);
+  } else if (config->layout == VK_NULL_HANDLE || config->render_pass == VK_NULL_HANDLE) {
+    SDL_Log("[ERROR] Pipeline config has either layout or render_pass unset.\n");
+    exit(1);
+  }
+  
+  VkShaderModule vs = __vk_load_shader(ctx, vs_path);
+  VkShaderModule fs = __vk_load_shader(ctx, fs_path);
+
+  VkPipelineShaderStageCreateInfo stages[2] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_VERTEX_BIT,
+      .module = vs,
+      .pName = "MainVS"
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+      .module = fs,
+      .pName = "MainFS"      
+    }
+  };
+
+  VkPipelineVertexInputStateCreateInfo vertex_input = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
+  };
+
+  VkDynamicState dynamic_states[] = {
+    VK_DYNAMIC_STATE_VIEWPORT,
+    VK_DYNAMIC_STATE_SCISSOR
+  };
+
+  VkPipelineDynamicStateCreateInfo dynamic_state_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+    .dynamicStateCount = 2,
+    .pDynamicStates = dynamic_states
+  };
+
+  VkPipelineViewportStateCreateInfo viewport_state = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+    .viewportCount = 1,
+    .scissorCount = 1
+  };
+
+  VkPipelineColorBlendStateCreateInfo color_blending = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+    .logicOpEnable = VK_FALSE,
+    .attachmentCount = 1,
+    .pAttachments = &config->color_blend_attachment
+  };
+  
+  VkGraphicsPipelineCreateInfo pipeline_info = {
+    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    .stageCount = 2,
+    .pStages = stages,
+    .pVertexInputState = &vertex_input,
+    .pInputAssemblyState = &config->input_assembly,
+    .pRasterizationState = &config->rasterizer,
+    .pMultisampleState = &config->multisampling,
+    .pColorBlendState = &color_blending,
+    .layout = config->layout,
+    .renderPass = config->render_pass,
+    .subpass = 0,
+    .pDynamicState = &dynamic_state_info,
+    .pViewportState = &viewport_state
+  };
+
+  VkPipeline pipeline;
+  check_vk_result(vkCreateGraphicsPipelines(ctx->device, VK_NULL_HANDLE, 1, &pipeline_info, NULL, &pipeline), "Failed to create graphics pipeline");
+  
+  vkDestroyShaderModule(ctx->device, vs, NULL);
+  vkDestroyShaderModule(ctx->device, fs, NULL);  
+  return pipeline;
 }
 
 void vk_draw_frame(vk_context *ctx) {

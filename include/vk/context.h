@@ -55,9 +55,25 @@ typedef struct vk_context_t {
   VkSemaphore *render_finished_semaphores;
   VkFence *in_flight_fences;
   uint8_t current_frame;
+
+  VkPipelineLayout pipeline_layout;
+  VkPipeline tri_pipeline;
 } vk_context;
 
+typedef struct vk_pipeline_config_t {
+  VkPipelineInputAssemblyStateCreateInfo input_assembly;
+  VkPipelineRasterizationStateCreateInfo rasterizer;
+  VkPipelineMultisampleStateCreateInfo multisampling;
+  VkPipelineColorBlendAttachmentState color_blend_attachment;
+  VkPipelineLayout layout;
+  VkRenderPass render_pass;
+} vk_pipeline_config;
+
+vk_pipeline_config vk_default_pipeline_config();
+
 void vk_context_init(vk_context *ctx, const char *title, int width, int height);
+
+VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *fs_path, vk_pipeline_config *config);
 
 void vk_draw_frame(vk_context *ctx);
 

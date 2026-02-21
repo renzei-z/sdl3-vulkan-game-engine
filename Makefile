@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g
+CFLAGS=-g -Wall -Wextra -Werror
 INCLUDE=-Iinclude
 LIBS=-lSDL3 -lvulkan
 
@@ -22,7 +22,7 @@ run: all
 	./game
 
 shaders/tri-frag.spv: shaders/tri.hlsl
-	dxc -T ps_6_0 -E MainPS -spirv $^ -Fo $@
+	dxc -T ps_6_0 -E MainFS -spirv $^ -Fo $@
 
 shaders/tri-vert.spv: shaders/tri.hlsl
 	dxc -T vs_6_0 -E MainVS -spirv $^ -Fo $@
