@@ -26,7 +26,7 @@ void __vk_create_sync_objects(vk_context *ctx);
 void vk_context_init(vk_context *ctx, const char *title, int width,
                      int height) {
   window_init(&ctx->win, title, width, height);
-
+  
   __vk_create_instance(ctx);
   __vk_create_surface(ctx);
 
@@ -537,7 +537,7 @@ void __vk_create_graphics_command_buffers(vk_context *ctx) {
     "Failed to allocate command buffers"
   );
 
-  SDL_Log("[INFO] Allocated graphics command buffers (%u).\n", ctx->image_count);
+  SDL_Log("[INFO] Allocated graphics command buffers (%u).\n", MAX_FRAMES_IN_FLIGHT);
 }
 
 void __vk_create_sync_objects(vk_context *ctx) {
@@ -686,12 +686,13 @@ void vk_context_shutdown(vk_context *ctx) {
   if (ctx->render_pass != VK_NULL_HANDLE)
     vkDestroyRenderPass(ctx->device, ctx->render_pass, NULL);
 
-  for (uint32_t i = 0; i < ctx->image_count; ++i) {
-    // TODO: Is this safe? Image views may not have been created.
-    vkDestroyImageView(ctx->device, ctx->swapchain_image_views[i], NULL); 
+  if (ctx->swapchain_image_views != NULL) {
+    for (uint32_t i = 0; i < ctx->image_count; ++i) {
+      vkDestroyImageView(ctx->device, ctx->swapchain_image_views[i], NULL); 
+    }
+    free(ctx->swapchain_image_views);
   }
-  free(ctx->swapchain_image_views);
-
+  
   if (ctx->swapchain != VK_NULL_HANDLE)
     vkDestroySwapchainKHR(ctx->device, ctx->swapchain, NULL);
 
