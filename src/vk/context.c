@@ -561,10 +561,10 @@ void __vk_create_graphics_command_buffers(vk_context *ctx) {
 }
 
 void __vk_create_sync_objects(vk_context *ctx) {
-  ctx->image_available_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+  ctx->image_available_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * ctx->image_count);
   check_mem_alloc(ctx->image_available_semaphores);
   
-ctx->render_finished_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+ctx->render_finished_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * ctx->image_count);
   check_mem_alloc(ctx->render_finished_semaphores);
 
   ctx->in_flight_fences = (VkFence*)malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
@@ -579,7 +579,7 @@ ctx->render_finished_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX
     .flags = VK_FENCE_CREATE_SIGNALED_BIT
   };
 
-  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+  for (uint32_t i = 0; i < ctx->image_count; ++i) {
     check_vk_result(
 		    vkCreateSemaphore(ctx->device, &semaphore_create_info, NULL, &ctx->image_available_semaphores[i]),
 		    "Failed to create image_available semaphore"
@@ -588,6 +588,8 @@ ctx->render_finished_semaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX
 		    vkCreateSemaphore(ctx->device, &semaphore_create_info, NULL, &ctx->render_finished_semaphores[i]),
 		    "Failed to create render_finished semaphore"
 		    );
+  }
+  for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     check_vk_result(
 		    vkCreateFence(ctx->device, &fence_create_info, NULL, &ctx->in_flight_fences[i]),
 		    "Failed to create in_flight fence"
@@ -766,7 +768,7 @@ void vk_draw_frame(vk_context *ctx) {
   };
   vkBeginCommandBuffer(cmd, &begin_info);
 
-  VkClearValue clear_color = {{{0.1f, 0.1f, 0.2f, 1.0f}}};
+  VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
 
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -779,6 +781,26 @@ void vk_draw_frame(vk_context *ctx) {
 
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx->tri_pipeline);
+
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = (float)ctx->swapchain_extent.width,
+    .height = (float)ctx->swapchain_extent.height,
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f
+  };
+  vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+  VkRect2D scissor = {
+    .offset = { 0, 0 },
+    .extent = ctx->swapchain_extent
+  };
+  vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+  vkCmdDraw(cmd, 3, 1, 0, 0);
+  
   vkCmdEndRenderPass(cmd);
   vkEndCommandBuffer(cmd);
 
@@ -794,7 +816,7 @@ void vk_draw_frame(vk_context *ctx) {
     .commandBufferCount = 1,
     .pCommandBuffers = &cmd,
     .signalSemaphoreCount = 1,
-    .pSignalSemaphores = &ctx->render_finished_semaphores[ctx->current_frame]
+    .pSignalSemaphores = &ctx->render_finished_semaphores[img_idx]
   };
 
   vkQueueSubmit(ctx->graphics_queue, 1, &submit_info, ctx->in_flight_fences[ctx->current_frame]);
@@ -802,7 +824,7 @@ void vk_draw_frame(vk_context *ctx) {
   VkPresentInfoKHR present_info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
-    .pWaitSemaphores = &ctx->render_finished_semaphores[ctx->current_frame], // Wait for rendering to finish
+    .pWaitSemaphores = &ctx->render_finished_semaphores[img_idx],
     .swapchainCount = 1,
     .pSwapchains = &ctx->swapchain,
     .pImageIndices = &img_idx
@@ -817,6 +839,12 @@ void vk_context_shutdown(vk_context *ctx) {
   if (ctx->device != VK_NULL_HANDLE)
     vkDeviceWaitIdle(ctx->device);
 
+  if (ctx->tri_pipeline != VK_NULL_HANDLE)
+    vkDestroyPipeline(ctx->device, ctx->tri_pipeline, NULL);
+
+  if (ctx->pipeline_layout != VK_NULL_HANDLE)
+    vkDestroyPipelineLayout(ctx->device, ctx->pipeline_layout, NULL);
+  
   if (ctx->in_flight_fences != NULL) {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
       vkDestroyFence(ctx->device, ctx->in_flight_fences[i], NULL);
@@ -824,13 +852,13 @@ void vk_context_shutdown(vk_context *ctx) {
   }
   
   if (ctx->image_available_semaphores != NULL) {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    for (uint32_t i = 0; i < ctx->image_count; ++i) {
       vkDestroySemaphore(ctx->device, ctx->image_available_semaphores[i], NULL);
     }
   }
   
   if (ctx->render_finished_semaphores != NULL) {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    for (uint32_t i = 0; i < ctx->image_count; ++i) {
       vkDestroySemaphore(ctx->device, ctx->render_finished_semaphores[i], NULL);
     }
   }
