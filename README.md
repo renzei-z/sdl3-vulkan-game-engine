@@ -33,3 +33,5 @@ make run
 ## License
 
 This software is provided as is under the MIT license. The full text of the license can be found [here](./LICENSE).
+
+The licenses of third-party libraries which are required to be distributed alongside the software can be found [here](./LICENSES).
