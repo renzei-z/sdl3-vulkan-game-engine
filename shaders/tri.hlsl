@@ -1,29 +1,28 @@
+struct VSInput {
+       [[vk::location(0)]] float3 Pos : POSITION;
+       [[vk::location(1)]] float3 Color : COLOR;
+       [[vk::location(2)]] float2 UV : TEXCOORD0;
+};
+
 struct VSOutput {
     float4 Pos : SV_POSITION;
     float3 Color : COLOR;
-};
-
-static const float2 positions[3] = {
-    float2(-0.5, 0.5),
-    float2(0.0, -0.5),
-    float2(0.5, 0.5),
-};
-
-static const float3 colors[3] = {
-    float3(1.0, 0.0, 0.0),
-    float3(0.0, 1.0, 0.0),
-    float3(0.0, 0.0, 1.0)
+    float2 UV : TEXCOORD0;
 };
 
 // Vertex Shader
-VSOutput MainVS(uint VertexIndex : SV_VertexID) {
+VSOutput MainVS(VSInput input) {
     VSOutput output;
-    output.Pos = float4(positions[VertexIndex], 0.0, 1.0);
-    output.Color = colors[VertexIndex];
+
+    output.Pos = float4(input.Pos, 1.0f);
+    output.Color = input.Color;
+    output.UV = input.UV;
+
     return output;
 }
 
 // Fragment Shader
 float4 MainFS(VSOutput input) : SV_TARGET {
-    return float4(input.Color, 1.0);
+       // We don't handle UVs yet.
+       return float4(input.Color, 1.0);
 }

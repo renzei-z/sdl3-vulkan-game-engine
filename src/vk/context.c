@@ -9,6 +9,7 @@
 
 #include <util/file_io.h>
 #include <util/logger.h>
+#include <vertex.h>
 
 #define UNUSED(x) ((void)x)
 #define TODO(msg) { SDL_Log("[TODO] %s\n", msg); exit(1); } 
@@ -606,7 +607,6 @@ VkShaderModule __vk_create_shader_module(vk_context *ctx, const uint32_t *code, 
     .pCode = code
   };
 
-  // TODO: Currently, we have no way to free this shader module.
   VkShaderModule module;
   check_vk_result(vkCreateShaderModule(ctx->device, &module_create_info, NULL, &module), "Could not create shader module");
 
@@ -688,10 +688,6 @@ VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *f
     }
   };
 
-  VkPipelineVertexInputStateCreateInfo vertex_input = {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-  };
-
   VkDynamicState dynamic_states[] = {
     VK_DYNAMIC_STATE_VIEWPORT,
     VK_DYNAMIC_STATE_SCISSOR
@@ -715,12 +711,47 @@ VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *f
     .attachmentCount = 1,
     .pAttachments = &config->color_blend_attachment
   };
+
+  VkVertexInputBindingDescription vertex_binding_desc = {
+    .binding = 0,
+    .stride = sizeof(vertex),
+    .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+  };
+
+  VkVertexInputAttributeDescription vertex_attr_descs[3] = {
+    {
+      .location = 0,
+      .binding = 0,
+      .format = VK_FORMAT_R32G32B32_SFLOAT,
+      .offset = offsetof(vertex, pos)
+    },
+    {
+      .location = 1,
+      .binding = 0,
+      .format = VK_FORMAT_R32G32B32_SFLOAT,
+      .offset = offsetof(vertex, color)
+    },
+    {
+      .location = 2,
+      .binding = 0,
+      .format = VK_FORMAT_R32G32_SFLOAT,
+      .offset = offsetof(vertex, uv)
+    }
+  };
+
+  VkPipelineVertexInputStateCreateInfo vertex_input_create_info = {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    .vertexBindingDescriptionCount = 1,
+    .pVertexBindingDescriptions = &vertex_binding_desc,
+    .vertexAttributeDescriptionCount = 3,
+    .pVertexAttributeDescriptions = vertex_attr_descs
+  };
   
   VkGraphicsPipelineCreateInfo pipeline_info = {
     .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
     .stageCount = 2,
     .pStages = stages,
-    .pVertexInputState = &vertex_input,
+    .pVertexInputState = &vertex_input_create_info,
     .pInputAssemblyState = &config->input_assembly,
     .pRasterizationState = &config->rasterizer,
     .pMultisampleState = &config->multisampling,
@@ -729,7 +760,7 @@ VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *f
     .renderPass = config->render_pass,
     .subpass = 0,
     .pDynamicState = &dynamic_state_info,
-    .pViewportState = &viewport_state
+    .pViewportState = &viewport_state,
   };
 
   VkPipeline pipeline;
