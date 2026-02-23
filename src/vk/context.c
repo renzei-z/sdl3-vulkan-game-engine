@@ -19,6 +19,7 @@ void __vk_create_surface(vk_context *ctx);
 void __vk_pick_physical_device(vk_context *ctx);
 void __vk_create_logical_device(vk_context *ctx);
 void __vk_get_device_queue(vk_context *ctx);
+void __vk_vma_create_allocator(vk_context *ctx);
 void __vk_create_pipeline_layout(vk_context *ctx);
 void __vk_create_swapchain(vk_context *ctx);
 void __vk_create_image_views(vk_context *ctx);
@@ -39,6 +40,8 @@ void vk_context_init(vk_context *ctx, const char *title, int width,
   __vk_create_logical_device(ctx);
   __vk_get_device_queue(ctx);
 
+  __vk_vma_create_allocator(ctx);
+  
   __vk_create_pipeline_layout(ctx);
   
   __vk_create_swapchain(ctx);
@@ -260,7 +263,7 @@ void __vk_create_logical_device(vk_context *ctx) {
   }
 
   float queue_priority = 1.0f;
-  VkDeviceQueueCreateInfo queue_create_infos[3] = {0};
+  VkDeviceQueueCreateInfo queue_create_infos[3] = {};
 
   for (uint32_t i = 0; i < unique_count; ++i) {
     queue_create_infos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -294,6 +297,30 @@ void __vk_get_device_queue(vk_context *ctx) {
     0,
     &ctx->graphics_queue
   );
+}
+
+void __vk_vma_create_allocator(vk_context *ctx) {
+  uint32_t api_version = VK_API_VERSION_1_0;
+  PFN_vkEnumerateInstanceVersion pfnEnumerateInstanceVersion = 
+    (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(NULL, "vkEnumerateInstanceVersion");
+
+  if (pfnEnumerateInstanceVersion) {
+    pfnEnumerateInstanceVersion(&api_version);
+  } else {
+    // NOTE: Interestingly, as vkEnumerateInstanceVersion was introduced in version 1.1, not being able to load it dynamically MEANS we are on version 1.0. But whatever, I'm printing a warning message anyway.
+    SDL_Log("[WARNING] Could not load vkEnumerateInstanceVersion - allocator falling back to Vulkan API version 1.0.\n");
+  }
+
+  VmaAllocatorCreateInfo alloc_create_info = {
+    .physicalDevice = ctx->physical_device,
+    .device = ctx->device,
+    .instance = ctx->instance,
+    .vulkanApiVersion = api_version,
+  };
+
+  vmaCreateAllocator(&alloc_create_info, &ctx->allocator);
+
+  SDL_Log("[INFO] Created VMA allocator.\n");
 }
 
 void __vk_create_pipeline_layout(vk_context *ctx) {
@@ -530,8 +557,8 @@ void __vk_create_framebuffers(vk_context *ctx) {
 void __vk_create_command_pool(vk_context *ctx, VkCommandPool *target, uint32_t queue_idx) {
   VkCommandPoolCreateInfo pool_create_info = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-    .queueFamilyIndex = queue_idx,
-    .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+    .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+    .queueFamilyIndex = queue_idx
   };
 
   check_vk_result(
@@ -631,7 +658,7 @@ VkShaderModule __vk_load_shader(vk_context *ctx, const char *path) {
 }
 
 vk_pipeline_config vk_default_pipeline_config() {
-  vk_pipeline_config cfg = {0};
+  vk_pipeline_config cfg = {};
 
   cfg.input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
   cfg.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -753,14 +780,14 @@ VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *f
     .pStages = stages,
     .pVertexInputState = &vertex_input_create_info,
     .pInputAssemblyState = &config->input_assembly,
+    .pViewportState = &viewport_state,
     .pRasterizationState = &config->rasterizer,
     .pMultisampleState = &config->multisampling,
     .pColorBlendState = &color_blending,
+    .pDynamicState = &dynamic_state_info,
     .layout = config->layout,
     .renderPass = config->render_pass,
     .subpass = 0,
-    .pDynamicState = &dynamic_state_info,
-    .pViewportState = &viewport_state,
   };
 
   VkPipeline pipeline;

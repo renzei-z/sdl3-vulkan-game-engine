@@ -1,6 +1,6 @@
-CC=gcc
+CC=g++
 CFLAGS_NOWARN=-g
-CFLAGS=$(CFLAGS_NOWARN) -Wall -Wextra -Werror
+CFLAGS=$(CFLAGS_NOWARN) -Wall -Wextra -Werror -Wno-missing-field-initializers
 BUILD=build
 INCLUDE=-Iinclude -Ithirdparty/include
 LIBS_NOVMA=-lSDL3 -lvulkan

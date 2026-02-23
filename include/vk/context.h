@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <vk_mem_alloc.h>
+
 #define MAX_FRAMES_IN_FLIGHT 2
 
 typedef struct swapchain_support_details_t {
@@ -58,6 +60,8 @@ typedef struct vk_context_t {
 
   VkPipelineLayout pipeline_layout;
   VkPipeline tri_pipeline;
+
+  VmaAllocator allocator;
 } vk_context;
 
 typedef struct vk_pipeline_config_t {
