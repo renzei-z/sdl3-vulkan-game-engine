@@ -16,7 +16,7 @@ typedef struct engine_state_t {
   vk_context vk;
 #endif // __VK_BACKEND
 
-  vertex *vertex_buffer_cpu;
+  vertex *vertex_map;
   uint32_t vertex_count;
   
   bool running;
@@ -24,7 +24,12 @@ typedef struct engine_state_t {
 
 void engine_init(engine_state *e, const char *title, int width, int height);
 
+void engine_begin_frame(engine_state *e);
+
+void engine_draw_triangle_basic(engine_state *e, float x1, float y1, float x2, float y2, float x3, float y3);
 void engine_draw_triangle(engine_state *e, vertex v1, vertex v2, vertex v3);
+
+void engine_do_render(engine_state *e);
 
 [[noreturn]] void engine_quit(engine_state *e);
 

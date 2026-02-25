@@ -2,12 +2,14 @@
 #define VK_CONTEXT_H_
 
 #include <window.h>
+#include <vertex.h>
 
 #include <vulkan/vulkan_core.h>
 
 #include <vk_mem_alloc.h>
 
 #define MAX_FRAMES_IN_FLIGHT 2
+#define MAX_VERTICES 10000
 
 typedef struct swapchain_support_details_t {
   VkSurfaceCapabilitiesKHR caps;
@@ -62,6 +64,8 @@ typedef struct vk_context_t {
   VkPipeline tri_pipeline;
 
   VmaAllocator allocator;
+  VkBuffer buffer;
+  VmaAllocation allocation;
 } vk_context;
 
 typedef struct vk_pipeline_config_t {
@@ -79,7 +83,7 @@ void vk_context_init(vk_context *ctx, const char *title, int width, int height);
 
 VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *fs_path, vk_pipeline_config *config);
 
-void vk_draw_frame(vk_context *ctx);
+void vk_draw_frame(vk_context *ctx, uint32_t vertex_count);
 
 void vk_context_shutdown(vk_context *ctx);
 

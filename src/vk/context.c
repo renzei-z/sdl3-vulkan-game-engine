@@ -20,6 +20,7 @@ void __vk_pick_physical_device(vk_context *ctx);
 void __vk_create_logical_device(vk_context *ctx);
 void __vk_get_device_queue(vk_context *ctx);
 void __vk_vma_create_allocator(vk_context *ctx);
+void __vk_vma_create_buffer(vk_context *ctx, VkDeviceSize size);
 void __vk_create_pipeline_layout(vk_context *ctx);
 void __vk_create_swapchain(vk_context *ctx);
 void __vk_create_image_views(vk_context *ctx);
@@ -41,6 +42,9 @@ void vk_context_init(vk_context *ctx, const char *title, int width,
   __vk_get_device_queue(ctx);
 
   __vk_vma_create_allocator(ctx);
+
+  VkDeviceSize buffer_size = sizeof(vertex) * MAX_VERTICES;
+  __vk_vma_create_buffer(ctx, buffer_size);
   
   __vk_create_pipeline_layout(ctx);
   
@@ -92,11 +96,21 @@ void __vk_create_instance(vk_context *ctx) {
     SDL_Log("\t%s\n", ext);
   }
 
+  VkApplicationInfo app_info = {
+    .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+    .pApplicationName = "Game Engine",
+    .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+    .pEngineName = "No Engine",
+    .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+    .apiVersion = VK_API_VERSION_1_0
+  };
+  
   VkInstanceCreateInfo vk_create_info = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-      .pApplicationInfo = NULL,
+      .pApplicationInfo = &app_info,
       .enabledExtensionCount = extension_count,
-      .ppEnabledExtensionNames = extensions};
+      .ppEnabledExtensionNames = extensions
+  };
 
   if (__vk_is_khronos_validation_supported()) {
     vk_create_info.enabledLayerCount = 1;
@@ -300,27 +314,53 @@ void __vk_get_device_queue(vk_context *ctx) {
 }
 
 void __vk_vma_create_allocator(vk_context *ctx) {
-  uint32_t api_version = VK_API_VERSION_1_0;
-  PFN_vkEnumerateInstanceVersion pfnEnumerateInstanceVersion = 
-    (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(NULL, "vkEnumerateInstanceVersion");
+  /* uint32_t api_version = VK_API_VERSION_1_0; */
+  /* PFN_vkEnumerateInstanceVersion pfnEnumerateInstanceVersion =  */
+  /*   (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(NULL, "vkEnumerateInstanceVersion"); */
 
-  if (pfnEnumerateInstanceVersion) {
-    pfnEnumerateInstanceVersion(&api_version);
-  } else {
-    // NOTE: Interestingly, as vkEnumerateInstanceVersion was introduced in version 1.1, not being able to load it dynamically MEANS we are on version 1.0. But whatever, I'm printing a warning message anyway.
-    SDL_Log("[WARNING] Could not load vkEnumerateInstanceVersion - allocator falling back to Vulkan API version 1.0.\n");
-  }
+  /* if (pfnEnumerateInstanceVersion) { */
+  /*   pfnEnumerateInstanceVersion(&api_version); */
+  /* } else { */
+  /*   // NOTE: Interestingly, as vkEnumerateInstanceVersion was introduced in version 1.1, not being able to load it dynamically MEANS we are on version 1.0. But whatever, I'm printing a warning message anyway. */
+  /*   SDL_Log("[WARNING] Could not load vkEnumerateInstanceVersion - allocator falling back to Vulkan API version 1.0.\n"); */
+  /* } */
 
+  // ^ Since we create the instance with API 1.0, we need to just use 1.0 for allocator.
+  
+  VmaVulkanFunctions vulkan_functions = {
+    .vkGetInstanceProcAddr = &vkGetInstanceProcAddr,
+    .vkGetDeviceProcAddr = &vkGetDeviceProcAddr
+  };
+  
   VmaAllocatorCreateInfo alloc_create_info = {
     .physicalDevice = ctx->physical_device,
     .device = ctx->device,
+    .pVulkanFunctions = &vulkan_functions,
     .instance = ctx->instance,
-    .vulkanApiVersion = api_version,
+    .vulkanApiVersion = VK_API_VERSION_1_0,
   };
 
-  vmaCreateAllocator(&alloc_create_info, &ctx->allocator);
+  check_vk_result(vmaCreateAllocator(&alloc_create_info, &ctx->allocator), "Failed to create VMA allocator");
 
   SDL_Log("[INFO] Created VMA allocator.\n");
+}
+
+void __vk_vma_create_buffer(vk_context *ctx, VkDeviceSize size) {
+  VkBufferCreateInfo buffer_create_info = {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .size = size,
+    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+  };
+
+  VmaAllocationCreateInfo alloc_create_info = {
+    .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+    .usage = VMA_MEMORY_USAGE_AUTO
+  };
+
+  check_vk_result(vmaCreateBuffer(ctx->allocator, &buffer_create_info, &alloc_create_info, &ctx->buffer, &ctx->allocation, NULL), "Failed to create VMA buffer");
+
+  SDL_Log("[INFO] Created VMA buffer.\n");
 }
 
 void __vk_create_pipeline_layout(vk_context *ctx) {
@@ -798,7 +838,7 @@ VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *f
   return pipeline;
 }
 
-void vk_draw_frame(vk_context *ctx) {
+void vk_draw_frame(vk_context *ctx, uint32_t vertex_count) {
   vkWaitForFences(ctx->device, 1, &ctx->in_flight_fences[ctx->current_frame], VK_TRUE, UINT64_MAX);
 
   uint32_t img_idx;
@@ -840,7 +880,9 @@ void vk_draw_frame(vk_context *ctx) {
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx->tri_pipeline);
-
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(cmd, 0, 1, &ctx->buffer, offsets);
+  
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
@@ -856,8 +898,9 @@ void vk_draw_frame(vk_context *ctx) {
     .extent = ctx->swapchain_extent
   };
   vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-  vkCmdDraw(cmd, 3, 1, 0, 0);
+  
+  if (vertex_count > 0)
+    vkCmdDraw(cmd, vertex_count, 1, 0, 0);
   
   vkCmdEndRenderPass(cmd);
   vkEndCommandBuffer(cmd);

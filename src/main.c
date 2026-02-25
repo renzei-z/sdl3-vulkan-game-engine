@@ -27,7 +27,13 @@ int main(void) {
             }
         }
 
-        vk_draw_frame(&engine.vk);
+	engine_begin_frame(&engine);
+
+	engine_draw_triangle_basic(&engine, -0.9f, -0.8f, -0.6f, -0.9f, -0.7f, -0.4f);
+	engine_draw_triangle_basic(&engine, 0.0f, 0.0f, 0.2f, 0.3f, -0.1f, 0.4f);
+	engine_draw_triangle_basic(&engine, 0.4f, 0.6f, 0.95f, -0.3f, 0.99f, 0.9f);
+	
+	engine_do_render(&engine);
     }
 
     engine_quit(&engine);
