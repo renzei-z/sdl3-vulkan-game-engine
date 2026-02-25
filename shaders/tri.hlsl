@@ -1,3 +1,5 @@
+#pragma pack_matrix(column_major)
+
 struct VSInput {
        [[vk::location(0)]] float3 Pos : POSITION;
        [[vk::location(1)]] float3 Color : COLOR;

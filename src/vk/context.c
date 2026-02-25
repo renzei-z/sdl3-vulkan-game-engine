@@ -9,7 +9,7 @@
 
 #include <util/file_io.h>
 #include <util/logger.h>
-#include <vertex.h>
+#include <renderer/vertex.h>
 
 #define UNUSED(x) ((void)x)
 #define TODO(msg) { SDL_Log("[TODO] %s\n", msg); exit(1); } 

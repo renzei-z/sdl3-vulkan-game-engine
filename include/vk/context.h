@@ -1,8 +1,12 @@
 #ifndef VK_CONTEXT_H_
 #define VK_CONTEXT_H_
 
-#include <window.h>
-#include <vertex.h>
+#include <core/cpp_header_guard.h>
+
+HEADER_BEGIN
+
+#include <core/window.h>
+#include <renderer/vertex.h>
 
 #include <vulkan/vulkan_core.h>
 
@@ -86,5 +90,7 @@ VkPipeline vk_pipeline_build(vk_context *ctx, const char *vs_path, const char *f
 void vk_draw_frame(vk_context *ctx, uint32_t vertex_count);
 
 void vk_context_shutdown(vk_context *ctx);
+
+HEADER_END
 
 #endif // VK_CONTEXT_H_

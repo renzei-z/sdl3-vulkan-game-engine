@@ -1,7 +1,11 @@
 #ifndef ENGINE_H_
 #define ENGINE_H_
 
-#include <vertex.h>
+#include <core/cpp_header_guard.h>
+
+HEADER_BEGIN
+
+#include <renderer/vertex.h>
 
 // #ifndef __VK_BACKEND
 // #error No appropriate backend defined. Make sure to define __VK_BACKEND before including engine.h
@@ -32,5 +36,7 @@ void engine_draw_triangle(engine_state *e, vertex v1, vertex v2, vertex v3);
 void engine_do_render(engine_state *e);
 
 [[noreturn]] void engine_quit(engine_state *e);
+
+HEADER_END
 
 #endif // ENGINE_H_

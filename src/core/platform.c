@@ -1,5 +1,5 @@
 #include <SDL3/SDL.h>
-#include <platform.h>
+#include <core/platform.h>
 
 bool platform_poll_events(engine_event *out) {
     SDL_Event e;

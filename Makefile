@@ -1,8 +1,9 @@
-CC := g++
-CFLAGS := -MMD -g -Wall -Wextra -Werror -Wno-missing-field-initializers
+CC := gcc
+CPP_CC := g++
+CFLAGS := -MMD -g -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-missing-braces
 CPPFLAGS := -Iinclude -Ithirdparty/include -D__VK_BACKEND
 LDFLAGS := -Lbuild
-LIBS := -lSDL3 -lvulkan
+LIBS := -lSDL3 -lvulkan -lm
 
 BUILD := build
 SRC_DIR := src
@@ -27,18 +28,18 @@ $(ENGINE_LIB): $(OBJS) $(BUILD)/vma.o
 
 $(BUILD)/vma.o: src/vk/cpp/vk_mem_alloc.cpp
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) -g -c -o $@ $<
+	$(CPP_CC) $(CPPFLAGS) -g -c -o $@ $<
 
 $(BUILD)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+	$(CC) -std=c23 $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 example: shaders $(EXAMPLE)
 	./$(EXAMPLE)
 
 $(EXAMPLE): examples/main.c $(ENGINE_LIB)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS) -lengine $(LIBS)
+	$(CPP_CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS) -lengine $(LIBS)
 
 clean:
 	rm -rf $(BUILD) $(SHADERS)

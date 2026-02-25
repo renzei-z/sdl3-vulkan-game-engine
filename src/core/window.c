@@ -1,5 +1,5 @@
 #include <SDL3/SDL_video.h>
-#include <window.h>
+#include <core/window.h>
 
 #include <SDL3/SDL.h>
 
