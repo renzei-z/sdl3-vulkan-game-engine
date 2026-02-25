@@ -26,7 +26,9 @@ void engine_init(engine_state *e, const char *title, int width, int height) {
 
     cfg.layout = e->vk.pipeline_layout;
     cfg.render_pass = e->vk.render_pass;
-    
+
+    // TODO: This should be called by the program itself to load a shader.
+    // Hardcoding a shader here is not good practice.
     e->vk.tri_pipeline = vk_pipeline_build(&e->vk, "shaders/tri-vert.spv", "shaders/tri-frag.spv", &cfg);
 }
 

@@ -1,50 +1,46 @@
-CC=g++
-CFLAGS_NOWARN=-g
-CFLAGS=$(CFLAGS_NOWARN) -Wall -Wextra -Werror -Wno-missing-field-initializers
-BUILD=build
-INCLUDE=-Iinclude -Ithirdparty/include
-LIBS_NOVMA=-lSDL3 -lvulkan
-LIBS=-L$(BUILD) $(LIBS_NOVMA) -lvma
+CC := g++
+CFLAGS := -MMD -g -Wall -Wextra -Werror -Wno-missing-field-initializers
+CPPFLAGS := -Iinclude -Ithirdparty/include -D__VK_BACKEND
+LDFLAGS := -Lbuild
+LIBS := -lSDL3 -lvulkan
 
-SRCS=$(shell find src -name "*.c")
-OBJS=$(SRCS:src/%.c=$(BUILD)/%.o)
+BUILD := build
+SRC_DIR := src
+SRCS := $(shell find $(SRC_DIR) -name "*.c")
+OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD)/%.o)
 
-VMA_TARGET=build/libvma.a
+ENGINE_LIB := $(BUILD)/libengine.a
+EXAMPLE := $(BUILD)/example
+SHADERS := shaders/tri-frag.spv shaders/tri-vert.spv
 
-# NOTE: This is temporary for just compiling triangle shaders.
-# TODO: We need a more robust way of compiling all shaders.
-SHADERS=shaders/tri-frag.spv shaders/tri-vert.spv
+.PHONY: all clean shaders example
 
-.PHONY: all run clean shaders
-
-all: $(BUILD) $(VMA_TARGET) shaders game
+all: shaders $(ENGINE_LIB)
 
 shaders: $(SHADERS)
 
-run: all
-	./game
+%.spv: shaders/tri.hlsl
+	dxc -T $(if $(findstring frag,$@),ps_6_0,vs_6_0) -E $(if $(findstring frag,$@),MainFS,MainVS) -spirv $< -Fo $@
 
-$(BUILD):
-	mkdir -p $(BUILD)
+$(ENGINE_LIB): $(OBJS) $(BUILD)/vma.o
+	ar rcs $@ $^
 
-$(VMA_TARGET): src/vk/cpp/vk_mem_alloc.cpp
-	g++ $(INCLUDE) -D__VK_BACKEND $(CFLAGS_NOWARN) -c -o build/vma.o src/vk/cpp/vk_mem_alloc.cpp $(LIBS_NOVMA)
-	ar rcs build/libvma.a build/vma.o
-
-shaders/tri-frag.spv: shaders/tri.hlsl
-	dxc -T ps_6_0 -E MainFS -spirv $^ -Fo $@
-
-shaders/tri-vert.spv: shaders/tri.hlsl
-	dxc -T vs_6_0 -E MainVS -spirv $^ -Fo $@
-
-game: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
-
-$(BUILD)/%.o: src/%.c
+$(BUILD)/vma.o: src/vk/cpp/vk_mem_alloc.cpp
 	@mkdir -p $(dir $@)
-	$(CC) $(INCLUDE) -D__VK_BACKEND $(CFLAGS) -c -o $@ $^
+	$(CC) $(CPPFLAGS) -g -c -o $@ $<
+
+$(BUILD)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+example: shaders $(EXAMPLE)
+	./$(EXAMPLE)
+
+$(EXAMPLE): examples/main.c $(ENGINE_LIB)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS) -lengine $(LIBS)
 
 clean:
-	rm -f $(SHADERS)
-	rm -rf $(BUILD)
-	rm -f game
+	rm -rf $(BUILD) $(SHADERS)
+
+-include $(OBJS:.o=.d)
