@@ -25,9 +25,9 @@ cd sdl3-vulkan-game-engine
 make
 ```
  
-3. Run:
+3. Run the example:
 ```bash
-make run
+make example
 ```
 
 ## License
