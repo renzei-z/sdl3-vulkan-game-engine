@@ -5,7 +5,9 @@
 #include <engine.h>
 #include <platform.h>
 
-#include <SDL3/SDL_log.h>
+#include <math.h>
+
+#include <SDL3/SDL.h>
 
 int main(void) {
     engine_state engine = {0};
@@ -29,9 +31,12 @@ int main(void) {
 
 	engine_begin_frame(&engine);
 
-	engine_draw_triangle_basic(&engine, -0.9f, -0.8f, -0.6f, -0.9f, -0.7f, -0.4f);
-	engine_draw_triangle_basic(&engine, 0.0f, 0.0f, 0.2f, 0.3f, -0.1f, 0.4f);
-	engine_draw_triangle_basic(&engine, 0.4f, 0.6f, 0.95f, -0.3f, 0.99f, 0.9f);
+	float t = SDL_GetTicks() / 1000.0f;
+	vertex v1 = {{ 0.0f, -0.5f + sinf(t*3) * 0.2f, 0.0f }, {1,0,0}, {0.5,0}};
+	vertex v2 = {{ 0.2f - 0.3f * cosf(t*2),  0.5f, 0.0f }, {0,1,0}, {1,1}};
+	vertex v3 = {{-0.5f,  0.5f - 0.4f*sinf(t/2), 0.0f }, {0,0,1}, {0,1}};
+
+	engine_draw_triangle(&engine, v1, v2, v3);
 	
 	engine_do_render(&engine);
     }
