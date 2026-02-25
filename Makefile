@@ -17,12 +17,15 @@ SHADERS=shaders/tri-frag.spv shaders/tri-vert.spv
 
 .PHONY: all run clean shaders
 
-all: $(VMA_TARGET) shaders game
+all: $(BUILD) $(VMA_TARGET) shaders game
 
 shaders: $(SHADERS)
 
 run: all
 	./game
+
+$(BUILD):
+	mkdir -p $(BUILD)
 
 $(VMA_TARGET): src/vk/cpp/vk_mem_alloc.cpp
 	g++ $(INCLUDE) -D__VK_BACKEND $(CFLAGS_NOWARN) -c -o build/vma.o src/vk/cpp/vk_mem_alloc.cpp $(LIBS_NOVMA)
