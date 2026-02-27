@@ -1,9 +1,10 @@
 CC := gcc
 CPP_CC := g++
+MAKE := make
 CFLAGS := -MMD -g -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-missing-braces
-CPPFLAGS := -Iinclude -Ithirdparty/include -D__VK_BACKEND
-LDFLAGS := -Lbuild
-LIBS := -lSDL3 -lvulkan -lm
+CPPFLAGS := -Iinclude -Ilibs/emm -D__VK_BACKEND
+LDFLAGS := -Lbuild -Llibs/emm/bin
+LIBS := -lSDL3 -lvulkan -lm -lemm
 
 BUILD := build
 SRC_DIR := src
@@ -11,6 +12,7 @@ SRCS := $(shell find $(SRC_DIR) -name "*.c")
 OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD)/%.o)
 
 ENGINE_LIB := $(BUILD)/libengine.a
+MATH_LIB := libs/emm/bin/libemm.a
 EXAMPLE := $(BUILD)/example
 SHADERS := shaders/tri-frag.spv shaders/tri-vert.spv
 
@@ -26,6 +28,9 @@ shaders: $(SHADERS)
 $(ENGINE_LIB): $(OBJS) $(BUILD)/vma.o
 	ar rcs $@ $^
 
+$(MATH_LIB): libs/emm/Makefile
+	$(MAKE) -C libs/emm
+
 $(BUILD)/vma.o: src/vk/cpp/vk_mem_alloc.cpp
 	@mkdir -p $(dir $@)
 	$(CPP_CC) $(CPPFLAGS) -g -c -o $@ $<
@@ -37,7 +42,7 @@ $(BUILD)/%.o: $(SRC_DIR)/%.c
 example: shaders $(EXAMPLE)
 	./$(EXAMPLE)
 
-$(EXAMPLE): examples/main.c $(ENGINE_LIB)
+$(EXAMPLE): examples/main.c $(ENGINE_LIB) $(MATH_LIB)
 	@mkdir -p $(dir $@)
 	$(CPP_CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LDFLAGS) -lengine $(LIBS)
 

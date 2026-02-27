@@ -90,6 +90,8 @@ static inline vec4 v4_add(vec4 a, vec4 b) {
 
 // TODO: vec4 basic inline operations
 
+
+
 HEADER_END
 
 #endif // MATH_TYPES_H_
