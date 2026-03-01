@@ -14,50 +14,38 @@
 
 HEADER_BEGIN
 
-typedef union emm_vec2_t {
+typedef union vec2_t {
   struct { float x, y; };
   struct { float r, g; };
   float raw[2];
-} emm_vec2;
+} vec2;
 
-typedef union emm_vec3_t {
+typedef union vec3_t {
   struct { float x, y, z; };
   struct { float r, g, b; };
   float raw[3];
-} emm_vec3;
+} vec3;
 
-typedef union emm_vec4_t {
+typedef union vec4_t {
   struct { float x, y, z, w; };
   struct { float r, g, b, a; };
   float raw[4];
-} emm_vec4;
+} vec4;
 
-typedef union emm_mat2_t {
+typedef union mat2_t {
   float raw[4];
-  emm_vec2 columns[2];
-} emm_mat2;
+  vec2 columns[2];
+} mat2;
 
-typedef union emm_mat3_t {
+typedef union mat3_t {
   float raw[9];
-  emm_vec3 columns[3];
-} emm_mat3;
+  vec3 columns[3];
+} mat3;
 
-typedef union emm_mat4_t {
+typedef union mat4_t {
   float raw[16];
-  emm_vec4 columns[4];
-} emm_mat4;
-
-#ifdef EMM_STRIP_PREFIXES
-
-typedef emm_vec2 vec2;
-typedef emm_vec3 vec3;
-typedef emm_vec4 vec4;
-
-typedef emm_mat2 mat2;
-typedef emm_mat3 mat3;
-typedef emm_mat4 mat4;
-
-#endif // EMM_NO_STRIP_PREFIXES
+  vec4 columns[4];
+} mat4;
 
 HEADER_END
 
