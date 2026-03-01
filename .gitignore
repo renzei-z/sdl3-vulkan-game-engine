@@ -2,3 +2,4 @@ build/
 game
 .clangd
 *.spv
+*.d

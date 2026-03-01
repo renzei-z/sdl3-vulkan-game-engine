@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -DEMM_ASSERT_ALIGNMENTS -Iinclude -std=c23 -g -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-missing-braces
+CFLAGS := -MMD -DEMM_ASSERT_ALIGNMENTS -Iinclude -std=c23 -g -Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-missing-braces
 LIBS := -lm
 
 SRC_DIR := src
@@ -29,3 +29,5 @@ $(BUILD)/%.o: $(SRC_DIR)/%.c
 clean:
 	rm -rf $(BIN)
 	rm -rf $(BUILD)
+
+-include $(OBJS:.o=.d)
